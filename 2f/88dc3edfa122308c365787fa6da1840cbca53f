@@ -1,0 +1,19 @@
+stt_sidecar/requirements.txt
+  s_5856e4bf0ff2b1::t_e8c495a210d51c 2-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2f88dc3edfa122308c365787fa6da1840cbca53f",
+  "prompts": {},
+  "sessions": {
+    "s_5856e4bf0ff2b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2a024a3-b4a5-4366-8a28-d844306a5139",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris <chris@edusign.fr>"
+    }
+  }
+}
