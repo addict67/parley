@@ -2,9 +2,13 @@
 # One command:  docker compose up -d
 #
 # Two services share a private network. The bot talks to the STT sidecar over
-# that network; only the web dashboard is published to the host, and ONLY on
-# 127.0.0.1. The dashboard ships with login (first boot creates the admin user);
-# still put a TLS proxy in front before exposing it to the internet.
+# that network; only the web dashboard is published to the host, on 127.0.0.1
+# unless PARLEY_BIND says otherwise. The dashboard ships with login (first boot
+# creates the admin user); still put a TLS proxy in front before exposing it to
+# the internet.
+#
+# Settings come from ${VAR} interpolation: Compose reads ./.env for local use,
+# and Portainer supplies the variables entered in its stack editor.
 services:
   sidecar:
     build:
@@ -16,6 +20,12 @@ services:
       # Pin the whisper size here; the bot also passes a per-guild model.
       STT_HOST: 0.0.0.0
       STT_PORT: "8000"
+      # The sidecar reads an empty value literally (device="" crashes), so
+      # unset falls back to "auto", the same as leaving them out.
+      STT_DEVICE: ${STT_DEVICE:-auto}
+      STT_COMPUTE: ${STT_COMPUTE:-auto}
+      # Empty means the per-device default.
+      STT_BATCH_SIZE: ${STT_BATCH_SIZE:-}
     volumes:
       # Whisper model weights persist here (first transcription downloads them).
       - whisper-models:/models
@@ -48,9 +58,20 @@ services:
     depends_on:
       sidecar:
         condition: service_healthy
-    env_file:
-      - .env
     environment:
+      # Empty values are safe here: the bot treats "" as unset and falls back to
+      # its own defaults (base URLs, OLLAMA_URL, TRUSTED_PROXY=loopback).
+      DISCORD_TOKEN: ${DISCORD_TOKEN:-}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      OPENCODE_API_KEY: ${OPENCODE_API_KEY:-}
+      OPENCODE_BASE_URL: ${OPENCODE_BASE_URL:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-}
+      OLLAMA_URL: ${OLLAMA_URL:-}
+      TRUSTED_PROXY: ${TRUSTED_PROXY:-}
       # Reach the sidecar by its compose service name, not localhost.
       STT_URL: http://sidecar:8000
       DATA_DIR: /data
@@ -60,9 +81,10 @@ services:
     volumes:
       # SQLite db + per-meeting audio.
       - parley-data:/data
-    # Dashboard reachable at http://127.0.0.1:3000 on the HOST only.
+    # Dashboard reachable at http://127.0.0.1:3000 on the HOST only by default.
+    # PARLEY_BIND=0.0.0.0 publishes it on every interface; PARLEY_PORT moves it.
     ports:
-      - "127.0.0.1:3000:3000"
+      - "${PARLEY_BIND:-127.0.0.1}:${PARLEY_PORT:-3000}:3000"
 
 volumes:
   parley-data:

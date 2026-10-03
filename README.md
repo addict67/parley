@@ -93,6 +93,7 @@ A fully self-hosted alternative to Otter/Fathom/Fireflies, built for Discord. Au
 - [Features](#-features)
 - [How it works](#-how-it-works)
 - [Quick start (Docker)](#-quick-start-docker)
+- [Deploy with Portainer](#-deploy-with-portainer)
 - [Where to host it](#-where-to-host-it)
 - [Prerequisites](#-prerequisites)
 - [Installation](#-installation)
@@ -171,6 +172,29 @@ flowchart LR
 
 > **Updating:** `git pull && docker compose up -d --build`. Your volume keeps every meeting and your settings.
 
+## 🧭 Deploy with Portainer
+
+The same `docker-compose.yml` deploys as a Portainer stack on a standalone Docker environment.
+
+1. **Stacks → Add stack → Repository.** Repository URL: your clone of this repo. Repository reference: `refs/heads/master`. Compose path: `docker-compose.yml`.
+2. Under **Environment variables**, add:
+
+   | Variable | Value |
+   |----------|-------|
+   | `DISCORD_TOKEN` | your bot token |
+   | `DISCORD_CLIENT_ID` | your application (client) ID |
+   | `GEMINI_API_KEY` | or another summarizer key (`OPENAI_API_KEY`, `OPENROUTER_API_KEY`, …) |
+   | `PARLEY_BIND` | `0.0.0.0` to reach the dashboard from other machines |
+
+   Every variable from `.env.example` works here; leave the rest unset to keep the defaults. `PARLEY_PORT` changes the host port (default `3000`).
+3. **Deploy the stack**, then open `http://<server>:3000` and sign in with `admin` / `admin`. Parley makes you change that password before the dashboard unlocks — do it right away, since the port is now reachable from the network.
+
+> **Expose it through TLS.** With `PARLEY_BIND=0.0.0.0` the dashboard serves plain HTTP. Put a TLS reverse proxy (Caddy, Traefik, Nginx Proxy Manager) in front and keep port 3000 firewalled from the internet. If the proxy reaches Parley from a non-loopback address (for example, another container), set `TRUSTED_PROXY` to that address or subnet.
+
+> **Settings saved in the dashboard win.** Keys and Discord credentials you edit in the browser are stored in the `parley-data` volume and override the stack variables on the next restart.
+
+> **Swarm is not supported.** The stack builds its images locally with `build:`, which `docker stack deploy` ignores. Use a standalone Docker environment, or build and push the images to a registry first.
+
 ## 🌍 Where to host it
 
 Parley's bot connects **out** to Discord over a websocket, so it needs **no public IP, no open ports, and no port forwarding**. That makes it happy almost anywhere that stays on:
@@ -189,7 +213,7 @@ Parley's bot connects **out** to Discord over a websocket, so it needs **no publ
 - **Cloud LLM (default):** only the final transcript *text* is sent to Gemini/OpenAI. Easiest, cheapest, great quality.
 - **Fully offline:** run [Ollama](https://ollama.com) (on the host or another box) and select it in Settings. Nothing ever leaves your network.
 
-> **Security:** the dashboard requires a **login**. On first run it seeds a default `admin` / `admin` account — sign in, and Parley **requires you to set a new password before the dashboard unlocks** (the rest of the API is gated until you do). Admins can add more users (username + optional email + password) and reset passwords; any user can change their own. Sensitive operations (API keys, Discord credentials, bot/sidecar control, deleting or merging meetings) are **admin-only**. Login is rate-limited against brute force, requests are same-origin-checked (CSRF), sessions are httpOnly cookies (marked `Secure` over https) that are revoked when a password changes, and passwords are scrypt-hashed (8-char minimum) in the same SQLite db. The server binds `127.0.0.1` by default (and, in Docker, only the host's localhost). To reach it from another machine, tunnel over SSH (`ssh -L 3000:127.0.0.1:3000 user@host`) or front it with a reverse proxy + TLS. Do **not** expose port 3000 to the internet directly.
+> **Security:** the dashboard requires a **login**. On first run it seeds a default `admin` / `admin` account — sign in, and Parley **requires you to set a new password before the dashboard unlocks** (the rest of the API is gated until you do). Admins can add more users (username + optional email + password) and reset passwords; any user can change their own. Sensitive operations (API keys, Discord credentials, bot/sidecar control, deleting or merging meetings) are **admin-only**. Login is rate-limited against brute force, requests are same-origin-checked (CSRF), sessions are httpOnly cookies (marked `Secure` over https) that are revoked when a password changes, and passwords are scrypt-hashed (8-char minimum) in the same SQLite db. The server binds `127.0.0.1` by default (and, in Docker, only the host's localhost unless you set `PARLEY_BIND`). To reach it from another machine, tunnel over SSH (`ssh -L 3000:127.0.0.1:3000 user@host`) or front it with a reverse proxy + TLS. Do **not** expose port 3000 to the internet directly.
 
 ## 📦 Prerequisites
 
